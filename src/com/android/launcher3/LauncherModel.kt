@@ -51,6 +51,8 @@ import java.util.function.Consumer
 import javax.inject.Inject
 import javax.inject.Named
 import javax.inject.Provider
+import android.content.BroadcastReceiver
+import android.content.IntentFilter
 
 /**
  * Maintains in-memory state of the Launcher. It is expected that there should be only one
@@ -112,6 +114,15 @@ constructor(
         }
     }
 
+    private val mHideAppReceiver: BroadcastReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            if (intent != null && "HIDE_APP_NAME".equals(intent.action)) {
+                android.util.Log.d("LauncherModel", "收到隐藏应用广播，开始强行刷新数据并重新加载图标...")
+                forceReload()
+            }
+        }
+    }
+
     init {
         if (!dbFileName.isNullOrEmpty()) {
             initializer.initialize(this)
@@ -119,6 +130,8 @@ constructor(
         lifecycle.addCloseable { destroy() }
         modelDelegate.init(this, mBgAllAppsList, mBgDataModel)
         lifecycle.addCloseable(dumpManager.register(this))
+        val filter: IntentFilter = IntentFilter("HIDE_APP_NAME")
+        context.registerReceiver(mHideAppReceiver, filter, Context.RECEIVER_EXPORTED)
     }
 
     fun newModelCallbacks() = ModelLauncherCallbacks(this::enqueueModelUpdateTask)
